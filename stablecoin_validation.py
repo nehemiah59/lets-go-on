@@ -1,5 +1,7 @@
 import io
+import os
 import pandas as pd
+import zipfile
 
 
 # Mapping from contract address to token symbol
@@ -11,6 +13,7 @@ TOKEN_MAP = {
     "0xa47c8bf37f92abed4a126bda807a7b7498661acd": "USTC",
     "0xd2877702675e6ceb975b4a1dff9fb7baf4c91ea9": "WLUNA"
 }
+
 
 # opening token_transfers.csv
 with zipfile.ZipFile("ERC20-stablecoins.zip") as z:
@@ -30,9 +33,20 @@ df_tokentrans["token"] = df_tokentrans["contract_address"].str.lower().map(TOKEN
 # OPENING PRICE_DATA FOLDER
 price_dfs = {}
 
+price_dfs = {}   # this must exist too
+
 with zipfile.ZipFile("ERC20-stablecoins.zip") as z:
+    
+    # 1) discover price files
+    price_files = [
+        name for name in z.namelist()
+        if name.startswith("price_data/") and name.endswith(".csv")
+    ]
+    
+    # 2) load each price file
     for file_path in price_files:
         token = file_path.split("/")[-1].replace("_price_data.csv", "").upper()
+        
         with z.open(file_path) as f:
             df = pd.read_csv(f)
             df["datetime"] = pd.to_datetime(df["time_stamp"], unit="s", utc=True)

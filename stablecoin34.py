@@ -1,4 +1,4 @@
-from stablecoin_validation.py import df_tokentrans
+from stablecoin_validation import df_tokentrans
 import pandas as pd
 import matplotlib.pyplot as plt
 
