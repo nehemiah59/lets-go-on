@@ -4,8 +4,6 @@ import numpy as np
 
 # 1). LOAD + CLEAN 
 
-import pandas as pd
-
 def format_csv(path: str) -> pd.DataFrame:
     df = pd.read_csv(path, header=None)
     df = df.iloc[2:].reset_index(drop=True)
