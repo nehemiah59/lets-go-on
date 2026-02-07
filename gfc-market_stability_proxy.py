@@ -1,4 +1,3 @@
-
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -45,43 +44,38 @@ plt.xlabel("Date")
 plt.ylabel("Close Price (USD)")
 plt.legend()
 plt.tight_layout()
-def label_peak_trough(df, label, color):
-    # Peak (pre-crisis)
-    peak_idx = df["Close"].idxmax()
-    peak_date = df.loc[peak_idx, "Date"]
-    peak_price = df.loc[peak_idx, "Close"]
-
-    # Trough (crisis low)
-    trough_idx = df["Close"].idxmin()
-    trough_date = df.loc[trough_idx, "Date"]
-    trough_price = df.loc[trough_idx, "Close"]
-
-    # Peak annotation
-    plt.scatter(peak_date, peak_price, color=color, zorder=5)
-    plt.annotate(
-        f"{label} peak\n{peak_date.date()}\n{peak_price:.1f}",
-        (peak_date, peak_price),
-        textcoords="offset points",
-        xytext=(5, 10),
-        fontsize=9
-    )
-
-    # Trough annotation
-    plt.scatter(trough_date, trough_price, color=color, zorder=5)
-    plt.annotate(
-        f"{label} trough\n{trough_date.date()}\n{trough_price:.1f}",
-        (trough_date, trough_price),
-        textcoords="offset points",
-        xytext=(5, -15),
-        fontsize=9
-    )
-
-# Label AIG and S&P 500 only
-label_peak_trough(aig, "AIG", "tab:blue")
-label_peak_trough(sp, "S&P 500", "tab:red")
 plt.show()
 
-#4). Phase analysis
+
+def label_peak_trough(ax, df, xcol, ycol, series_name, fmt="{:.4f}"):
+    # Peak and trough over the current df window
+    peak_idx = df[ycol].idxmax()
+    trough_idx = df[ycol].idxmin()
+
+    peak_date, peak_val = df.loc[peak_idx, xcol], df.loc[peak_idx, ycol]
+    trough_date, trough_val = df.loc[trough_idx, xcol], df.loc[trough_idx, ycol]
+
+    # Markers
+    ax.scatter([peak_date], [peak_val], zorder=5)
+    ax.scatter([trough_date], [trough_val], zorder=5)
+
+    # Labels
+    ax.annotate(
+        f"{series_name} peak\n{peak_date.date()}\n{fmt.format(peak_val)}",
+        (peak_date, peak_val),
+        textcoords="offset points",
+        xytext=(8, 8),
+        fontsize=9
+    )
+    ax.annotate(
+        f"{series_name} trough\n{trough_date.date()}\n{fmt.format(trough_val)}",
+        (trough_date, trough_val),
+        textcoords="offset points",
+        xytext=(8, -28),
+        fontsize=9
+    )
+
+#Phase analysis
 
 PHASES_2008 = [
     ("Phase 1: Pre-crisis / Apparent Stability", "2007-01-01", "2007-12-31"),
@@ -172,3 +166,156 @@ print(drawdowns)
 
 drawdowns.to_csv("market_stability_drawdowns_2008.csv", index=False)
 
+# ============================================================
+# EXTRA ANALYSIS (added at bottom; original visuals + CSVs above unchanged)
+# ============================================================
+
+# 5) RETURNS + ROLLING VOLATILITY (confidence instability proxy)
+# Use percentage returns; 30-day rolling vol is a common choice for daily data.
+for name, df in series.items():
+    df["ret"] = df["Close"].pct_change()
+    df["vol_30d"] = df["ret"].rolling(30).std()
+
+# Plot rolling volatility (banks vs market)
+plt.figure(figsize=(11, 5))
+plt.plot(aig["Date"], aig["vol_30d"], label="AIG vol (30d)")
+plt.plot(c["Date"],   c["vol_30d"],   label="C vol (30d)")
+plt.plot(jpm["Date"], jpm["vol_30d"], label="JPM vol (30d)")
+plt.plot(sp["Date"],  sp["vol_30d"],  label="S&P 500 vol (30d)", linestyle="--")
+plt.title("Market Stress Proxy: Rolling Volatility of Returns (30-day)")
+plt.xlabel("Date")
+plt.ylabel("Rolling volatility (std of daily returns)")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# Save volatility diagnostics
+vol_table = pd.DataFrame({
+    "Date": sp["Date"],
+    "AIG_vol_30d": aig["vol_30d"].values if len(aig) == len(sp) else np.nan,
+})
+# Safer: export each series separately to avoid length mismatch
+aig[["Date","ret","vol_30d"]].to_csv("aig_returns_vol_30d.csv", index=False)
+c[["Date","ret","vol_30d"]].to_csv("c_returns_vol_30d.csv", index=False)
+jpm[["Date","ret","vol_30d"]].to_csv("jpm_returns_vol_30d.csv", index=False)
+sp[["Date","ret","vol_30d"]].to_csv("sp_returns_vol_30d.csv", index=False)
+
+# 6) INDEXED PRICES (start = 100) for relative performance / flight-to-quality visual
+for name, df in series.items():
+    if len(df) > 0:
+        df["indexed_100"] = (df["Close"] / df["Close"].iloc[0]) * 100.0
+    else:
+        df["indexed_100"] = np.nan
+
+plt.figure(figsize=(10, 5))
+plt.plot(aig["Date"], aig["indexed_100"], label="AIG (Indexed)")
+plt.plot(c["Date"],   c["indexed_100"],   label="C (Indexed)")
+plt.plot(jpm["Date"], jpm["indexed_100"], label="JPM (Indexed)")
+plt.plot(sp["Date"],  sp["indexed_100"],  label="S&P 500 (Indexed)", linestyle="--")
+plt.title("Relative Performance (Start=100): Banks vs S&P 500 (2007–2009)")
+plt.xlabel("Date")
+plt.ylabel("Indexed price (Start = 100)")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# Export indexed prices for write-up use
+aig[["Date","Close","indexed_100"]].to_csv("aig_indexed_prices.csv", index=False)
+c[["Date","Close","indexed_100"]].to_csv("c_indexed_prices.csv", index=False)
+jpm[["Date","Close","indexed_100"]].to_csv("jpm_indexed_prices.csv", index=False)
+sp[["Date","Close","indexed_100"]].to_csv("sp_indexed_prices.csv", index=False)
+
+# 7) ROLLING CORRELATION (panic synchronization / contagion proxy)
+# Rolling correlation of bank returns with S&P returns
+WINDOW_CORR = 30
+
+def rolling_corr_with_sp(bank_df: pd.DataFrame, sp_df: pd.DataFrame, window: int = 30) -> pd.DataFrame:
+    merged_rs = pd.merge(
+        bank_df[["Date", "ret"]].dropna(),
+        sp_df[["Date", "ret"]].dropna(),
+        on="Date",
+        how="inner",
+        suffixes=("_bank", "_sp")
+    ).sort_values("Date")
+
+    merged_rs["roll_corr"] = merged_rs["ret_bank"].rolling(window).corr(merged_rs["ret_sp"])
+    return merged_rs
+
+rc_aig = rolling_corr_with_sp(aig, sp, WINDOW_CORR)
+rc_c   = rolling_corr_with_sp(c, sp, WINDOW_CORR)
+rc_jpm = rolling_corr_with_sp(jpm, sp, WINDOW_CORR)
+
+plt.figure(figsize=(11, 5))
+plt.plot(rc_aig["Date"], rc_aig["roll_corr"], label=f"AIG vs S&P (roll corr {WINDOW_CORR}d)")
+plt.plot(rc_c["Date"],   rc_c["roll_corr"],   label=f"C vs S&P (roll corr {WINDOW_CORR}d)")
+plt.plot(rc_jpm["Date"], rc_jpm["roll_corr"], label=f"JPM vs S&P (roll corr {WINDOW_CORR}d)")
+plt.axhline(0.0, linestyle="--")
+plt.title("Panic Synchronization: Rolling Correlation of Returns with S&P 500")
+plt.xlabel("Date")
+plt.ylabel("Rolling correlation")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+rc_aig.to_csv("aig_sp_rolling_corr.csv", index=False)
+rc_c.to_csv("c_sp_rolling_corr.csv", index=False)
+rc_jpm.to_csv("jpm_sp_rolling_corr.csv", index=False)
+
+# 8) LEAD–LAG CORRELATION (who moves first? propagation direction)
+def lead_lag_corr(x: pd.Series, y: pd.Series, max_lag: int = 20) -> pd.DataFrame:
+    lags = range(-max_lag, max_lag + 1)
+    corrs = []
+    for lag in lags:
+        corrs.append(x.corr(y.shift(lag)))
+    return pd.DataFrame({"lag": list(lags), "corr": corrs})
+
+# Align returns by date (inner join), then compute lead-lag vs S&P
+def aligned_returns(bank_df: pd.DataFrame, sp_df: pd.DataFrame) -> pd.DataFrame:
+    m = pd.merge(
+        bank_df[["Date", "ret"]].dropna(),
+        sp_df[["Date", "ret"]].dropna(),
+        on="Date",
+        how="inner",
+        suffixes=("_bank", "_sp")
+    ).sort_values("Date")
+    return m
+
+m_aig = aligned_returns(aig, sp)
+m_c   = aligned_returns(c, sp)
+m_jpm = aligned_returns(jpm, sp)
+
+ll_aig = lead_lag_corr(m_aig["ret_bank"], m_aig["ret_sp"], max_lag=20)
+ll_c   = lead_lag_corr(m_c["ret_bank"],   m_c["ret_sp"],   max_lag=20)
+ll_jpm = lead_lag_corr(m_jpm["ret_bank"], m_jpm["ret_sp"], max_lag=20)
+
+# Save lead-lag tables
+ll_aig.to_csv("lead_lag_aig_vs_sp.csv", index=False)
+ll_c.to_csv("lead_lag_c_vs_sp.csv", index=False)
+ll_jpm.to_csv("lead_lag_jpm_vs_sp.csv", index=False)
+
+# Plot lead-lag correlations
+fig, axes = plt.subplots(3, 1, figsize=(10, 9), sharex=True)
+axes[0].plot(ll_aig["lag"], ll_aig["corr"], marker="o")
+axes[0].axhline(0.0, linestyle="--")
+axes[0].set_title("Lead–Lag Correlation: AIG returns vs S&P returns")
+axes[0].set_ylabel("Correlation")
+
+axes[1].plot(ll_c["lag"], ll_c["corr"], marker="o")
+axes[1].axhline(0.0, linestyle="--")
+axes[1].set_title("Lead–Lag Correlation: C returns vs S&P returns")
+axes[1].set_ylabel("Correlation")
+
+axes[2].plot(ll_jpm["lag"], ll_jpm["corr"], marker="o")
+axes[2].axhline(0.0, linestyle="--")
+axes[2].set_title("Lead–Lag Correlation: JPM returns vs S&P returns")
+axes[2].set_xlabel("Lag (positive = bank leads S&P)")
+axes[2].set_ylabel("Correlation")
+
+fig.tight_layout()
+plt.show()
+
+# 9) DRAW DOWN TIMING COMPARISON (order of troughs = propagation narrative)
+drawdowns_sorted = drawdowns.sort_values("trough_date").reset_index(drop=True)
+print("\n=== Drawdowns sorted by trough_date (who bottomed first?) ===")
+print(drawdowns_sorted)
+drawdowns_sorted.to_csv("market_stability_drawdowns_sorted_by_trough_date.csv", index=False)
