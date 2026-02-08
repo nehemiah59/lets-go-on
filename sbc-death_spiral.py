@@ -1,11 +1,31 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import zipfile
 
 # ---- Load data ----
+ZIP_PATH = "ERC20-stablecoins.zip"
+INNER_PRICE_ZIP = "price_data.zip"
 
-ustc = pd.read_csv("/Users/gabrielchia/Desktop/Databusters/ERC20-stablecoins/price_data/ustc_price_data.csv")
-wluna = pd.read_csv("/Users/gabrielchia/Desktop/Databusters/ERC20-stablecoins/price_data/wluna_price_data.csv")
+def load_price_csv(token_name):
+    """
+    Load <token>_price_data.csv from the nested price_data.zip
+    regardless of folder structure.
+    """
+    target = f"{token_name.lower()}_price_data.csv"
+
+    with zipfile.ZipFile(ZIP_PATH) as z:
+        with z.open(INNER_PRICE_ZIP) as inner_zip:
+            with zipfile.ZipFile(io.BytesIO(inner_zip.read())) as pz:
+                for name in pz.namelist():
+                    if name.lower().endswith(target):
+                        with pz.open(name) as f:
+                            return pd.read_csv(f)
+
+    raise FileNotFoundError(f"{target} not found inside {INNER_PRICE_ZIP}")
+
+ustc = load_price_csv("ustc")
+wluna = load_price_csv("wluna")
 
 # Convert Unix timestamps (seconds) -> datetime (UTC)
 ustc["dt"] = pd.to_datetime(ustc["timestamp"], unit="s", utc=True)
