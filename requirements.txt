@@ -1,0 +1,7 @@
+pandas
+matplotlib.pyplot
+matplotlib.dates
+datetime
+numpy
+zipfile
+io
