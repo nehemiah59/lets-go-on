@@ -129,8 +129,6 @@ ax2.xaxis.set_major_locator(mdates.MonthLocator())
 plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45, ha='right')
 
 plt.tight_layout()
-##plt.savefig('C:/Users/kelvi/OneDrive - National University of Singapore/2. Y1S2/NUS x NTU Databusters 2026/q2_panic_onset_zoomed.png',
-##            dpi=300, bbox_inches='tight')
 plt.show()
 
 
@@ -215,9 +213,6 @@ ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
 plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
 
 plt.tight_layout()
-plt.savefig('C:/Users/kelvi/OneDrive - National University of Singapore/2. Y1S2/NUS x NTU Databusters 2026/q3_run_intensity_volume.png',
-            dpi=300, bbox_inches='tight')
-print("Saved: q3_run_intensity_volume.png")
 plt.show()
 
 ###
@@ -258,7 +253,5 @@ ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
 plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
 
 plt.tight_layout()
-##plt.savefig('C:/Users/kelvi/OneDrive - National University of Singapore/2. Y1S2/NUS x NTU Databusters 2026/bonus_normalized_prices.png',
-##            dpi=300, bbox_inches='tight')
 plt.show()
 
