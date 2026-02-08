@@ -1,11 +1,12 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import zipfile
 
 # 1). LOAD + CLEAN 
 
-def format_csv(path: str) -> pd.DataFrame:
-    df = pd.read_csv(path, header=None)
+def format_csv(file_obj) -> pd.DataFrame:
+    df = pd.read_csv(file_obj, header=None)
     df = df.iloc[2:].reset_index(drop=True)
     df.columns = ["Date", "Close", "High", "Low", "Open", "Volume"]
     df["Date"] = pd.to_datetime(df["Date"], dayfirst=True, errors="coerce")
@@ -14,19 +15,26 @@ def format_csv(path: str) -> pd.DataFrame:
     df = df.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
     return df
 
-aig = format_csv("/Users/gabrielchia/Desktop/Databusters/gfc data/AIG.csv")
-c   = format_csv("/Users/gabrielchia/Desktop/Databusters/gfc data/C.csv")
-jpm = format_csv("/Users/gabrielchia/Desktop/Databusters/gfc data/JPM.csv")
-sp  = format_csv("/Users/gabrielchia/Desktop/Databusters/gfc data/^GSPC.csv")
+
+GFC_ZIP = "gfc.zip"
+
+with zipfile.ZipFile(GFC_ZIP) as z:
+    with z.open("gfc data/AIG.csv") as f:
+        aig = format_csv(f)
+
+    with z.open("gfc data/C.csv") as f:
+        c = format_csv(f)
+
+    with z.open("gfc data/JPM.csv") as f:
+        jpm = format_csv(f)
+
+    with z.open("gfc data/^GSPC.csv") as f:
+        sp = format_csv(f)
 
 # 2). crisis window zoom in
 
 start = pd.Timestamp("2007-01-01")
 end   = pd.Timestamp("2009-12-31")
-aig = aig[(aig["Date"] >= start) & (aig["Date"] <= end)]
-c   = c[(c["Date"]   >= start) & (c["Date"]   <= end)]
-jpm = jpm[(jpm["Date"] >= start) & (jpm["Date"] <= end)]
-sp  = sp[(sp["Date"]  >= start) & (sp["Date"]  <= end)]
 
 
 # 3). PLOT: Market Stability Proxy
